@@ -1,0 +1,86 @@
+Acorn data analysis
+========================================================
+
+* Author [John Stanton-Geddes](www.johnstantongeddes.org), <john.stantongeddes.research@gmail.com>
+* 2013-05-13
+
+Data file from the paper "Walter D. Koenig and Johannes M. H. Knops. 2013. Large-scale spatial synchrony and cross-synchrony in acorn production by two California oaks. Ecology. 94:83–93. http://dx.doi.org/10.1890/12-0940.1" downloaded from [Ecological Archives](http://esapubs.org/archive/ecol/E094/009/)
+
+Using this file as a typical ecological data set with a response (acorn count) collected from multiple sites over multiple years with many potential predictors. Will send out to colleagues and ask to analyze. Our question is if most people use stepwise model selection, or AIC. 
+
+Deleted the final two columns ("Combined environmental variable...") and changed "Mean (log-trans) acorn count (acorns per 30 s)" to "acorn count" for simplicity in explaning data file.
+
+----------------------------------------------------------
+
+Load and examine data
+
+```{r}
+library(MASS)
+
+acorndata <- read.table("acorn_data_stats.csv", header=TRUE, sep="\t")
+head(acorndata)
+str(acorndata)
+```
+
+Check distribution of acorn.count
+
+```{r acorndist}
+hist(acorndata$acorn.count)
+```
+
+Mode at 0 and flat to 3 
+
+Fit multiple regression model with all predictors. 
+
+```{r multreg}
+mlm1 <- lm(acorn.count ~ acorndata[,1] + acorndata[,4] + acorndata[,5] + acorndata[,7] + acorndata[,8] + acorndata[,9] + acorndata[,10] + acorndata[,11] + acorndata[,12] + acorndata[,13] + acorndata[,14] + acorndata[,15] + acorndata[,16] + acorndata[,17] + acorndata[,18] + acorndata[,19] + acorndata[,20], data=acorndata)
+
+# Model checking
+plot(mlm1) # no large deviations from LM assumptions
+
+summary(mlm1)
+aov(mlm1)
+```
+
+
+### Model simplification by likelihood ratio test
+
+Retain site [,1], year [,4] and species [,5] columns as designed components of experiment. Test significance of environmental predictors by stepwise deletion.
+
+```{r modelsimplification}
+mlm2 <- update(mlm1, . ~ . - acorndata[,11])
+anova(mlm2, mlm1) # No significant difference, drop term
+summary(mlm2)
+
+mlm3 <- update(mlm2, . ~ . - acorndata[,20])
+anova(mlm3, mlm2) # No significant difference, drop term
+summary(mlm3)
+
+mlm4 <- update(mlm3, . ~ . - acorndata[,10])
+anova(mlm4, mlm3) # No significant difference, drop term
+summary(mlm4)
+
+mlm5 <- update(mlm4, . ~ . - acorndata[,13])
+anova(mlm5, mlm4) # No significant difference, drop term
+summary(mlm5)
+
+mlm6 <- update(mlm5, . ~ . - acorndata[,16])
+anova(mlm6, mlm5) # Marginally significant (p=0.06), drop term
+summary(mlm6)
+
+mlm7 <- update(mlm6, . ~ . - acorndata[,19])
+anova(mlm7, mlm6) # Significant difference, retain term
+summary(mlm7)
+```
+
+Remaining predictors will be significant; retain predictor columns 7,8,9,12,14,15,17,18,19.
+
+### Model simplification by AIC
+
+Repeat analysis using stepAIC
+
+```{r dropterm}
+mlmAIC <- stepAIC(mlm1, scope = list(lower = ~ acorndata[,1] + acorndata[,4] + acorndata[,5]))
+```
+
+Retains same terms as stepwise model simplification and additionally column 16. Interestingly, this contradicts the conclusion of Murtaugh that AIC is more conservative. Note however, that column 16 was marginally significant (p=0.06) in the likelihood ratio test.  

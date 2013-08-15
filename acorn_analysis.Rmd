@@ -6,9 +6,12 @@ Acorn data analysis
 
 Data file from the paper "Walter D. Koenig and Johannes M. H. Knops. 2013. Large-scale spatial synchrony and cross-synchrony in acorn production by two California oaks. Ecology. 94:83–93. http://dx.doi.org/10.1890/12-0940.1" downloaded from [Ecological Archives](http://esapubs.org/archive/ecol/E094/009/)
 
-Using this file as a typical ecological data set with a response (acorn count) collected from multiple sites over multiple years with many potential predictors. Will send out to colleagues and ask to analyze. Our question is if most people use stepwise model selection, or AIC. 
+Preliminary analysis of a typical ecological data set with a response (acorn count) collected from multiple sites over multiple years with many potential predictors. Will send out to colleagues and ask to analyze. Our question is if most people use stepwise model selection, or AIC. 
 
 Deleted the final two columns ("Combined environmental variable...") and changed "Mean (log-trans) acorn count (acorns per 30 s)" to "acorn count" for simplicity in explaning data file.
+
+We in no way intend this as a criticism or an endorsement of the analysis performed by Koenig and Knops. We quite liked their paper, but simply selected this data set as it was freely available from *Ecological Archives* and fit our requirements of a single response and a number of potentially-important and associated predictors.
+
 
 ----------------------------------------------------------
 
@@ -16,6 +19,7 @@ Load and examine data
 
 ```{r}
 library(MASS)
+library(ggplot2)
 
 acorndata <- read.table("acorn_data_stats.csv", header=TRUE, sep="\t")
 head(acorndata)
@@ -25,10 +29,21 @@ str(acorndata)
 Check distribution of acorn.count
 
 ```{r acorndist}
-hist(acorndata$acorn.count)
+hist(acorndata$acorn.count) # Mode at 0 and flat to 3
+# Back transform
+hist(exp(acorndata$acorn.count))
 ```
 
-Mode at 0 and flat to 3 
+On original scale, acorn count is negative binomial or poisson distributed, but because "acorn count in 30 seconds of counting" the values are not integers (e.g. `r exp(acorndata$acorn.count[1:10])`). Could probably round to nearest integer without large effect on results, but proceed with analysis using log-transformed data.
+ 
+
+Examine correlations among variables
+```{r pairs}
+pairs(acorndata[,6:20]) # Too many to view, split 
+pairs(acorndata[,6:12]) # Mean.max.April.temp and Mean.max.March.temp highly correlated
+pairs(acorndata[,c(6,13:20)]) # Mean.max.summer.temp and Mean.max.summer.temp.lagged.1.yr correlated; Mean.max.March.temp.lagged.1.yr and Mean.max.April.temp.lagged.1.yr correlated
+```
+
 
 Fit multiple regression model with all predictors. 
 
@@ -83,4 +98,11 @@ Repeat analysis using stepAIC
 mlmAIC <- stepAIC(mlm1, scope = list(lower = ~ acorndata[,1] + acorndata[,4] + acorndata[,5]))
 ```
 
-Retains same terms as stepwise model simplification and additionally column 16. Interestingly, this contradicts the conclusion of Murtaugh that AIC is more conservative. Note however, that column 16 was marginally significant (p=0.06) in the likelihood ratio test.  
+Retains same terms as stepwise model simplification and additionally column 16. Note however, that column 16 was marginally significant (p=0.06) in the likelihood ratio test.  
+
+```{r}
+sessionInfo()
+```
+
+To make this analysis easier (and less biased towards automatic model selection functions such as stepAIC() ) subset this dataset to only 7 environmental predictors. Saved as "stats_data.csv" 
+

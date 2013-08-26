@@ -164,6 +164,22 @@ summary(mlmAIC)
 
 Retains same terms as stepwise model simplification!
 
+### Summary of survery responses ###
+
+Load file that summarizes survery responses. For each of the seven environmental predictors, gives the percent of final models that included that predictor. Plot.
+
+```{r summary}
+rs <- read.table("response_summary.tsv", header=T, sep="\t")
+colnames(rs)[2] <- "Model_type"
+ggplot(rs, aes(x=factor(Model_type), y=percent_included, fill=Model_type)) + geom_bar(stat="identity") + facet_grid(. ~ term) + labs(x="Term", y="% of models including term")
+
+# Repeat after dropping 'other'
+rs1 <- rs[rs$"Model_type"!="other",]
+ggplot(rs1, aes(x=factor(Model_type), y=percent_included, fill=Model_type)) + geom_bar(stat="identity") + facet_grid(. ~ term) + labs(x="Term", y="% of models including term")
+```
+
+
+
 
 ```{r session}
 sessionInfo()

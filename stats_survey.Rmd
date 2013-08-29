@@ -19,6 +19,7 @@ library(MASS)
 library(nlme)
 library(lme4)
 library(MuMIn)
+library(ggplot2)
 
 statsdata <- read.csv("stats_data.csv", header=TRUE, sep=",")
 head(statsdata)
@@ -175,7 +176,8 @@ ggplot(rs, aes(x=factor(Model_type), y=percent_included, fill=Model_type)) + geo
 
 # Repeat after dropping 'other'
 rs1 <- rs[rs$"Model_type"!="other",]
-ggplot(rs1, aes(x=factor(Model_type), y=percent_included, fill=Model_type)) + geom_bar(stat="identity") + facet_grid(. ~ term) + labs(x="Term", y="% of models including term")
+p <- ggplot(rs1, aes(x=factor(Model_type), y=percent_included, fill=factor(Model_type))) + geom_bar(stat="identity") + facet_grid(. ~ term) + labs(x="Term", y="% of models including term")
+p + scale_fill_grey()
 ```
 
 

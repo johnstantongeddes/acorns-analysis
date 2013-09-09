@@ -32,6 +32,15 @@ Check distribution of acorn.count
 hist(statsdata$acorn_count) # Mode at 0 and flat to 3 
 ```
 
+## Graphical exploration ##
+```{r explore}
+pairs(statsdata[,4:11])
+
+# Fewer variables
+pairs(statsdata[,c(4:8)])
+pairs(statsdata[,c(4,9:11)])
+```
+
 ## Model selection by step-wise deletion ##
 
 Fit mixed-effects model with site and year as random effects and all environmental predictors as fixed. 
@@ -79,6 +88,9 @@ lmer8 <- lmer(acorn_count ~ April_rain + April_rain_lagged1 + species + (1|site_
 summary(lmer8)
 anova(lmer8, lmer5)
 # Marginally retain April_rain_lagged1 at alpha=0.05, but not after multiple testing
+
+# Check correlations among these variables
+pairs(statsdata[,c(4,8:10)])
 ```
 
 Final model retains April_rain. March_rain_lagged1 and April_rain_lagged1 are marginally significant at alpha=0.05 but would not be retained if correcting for multiple testing.
@@ -180,6 +192,69 @@ p <- ggplot(rs1, aes(x=factor(Model_type), y=percent_included, fill=factor(Model
 p + scale_fill_grey()
 ```
 
+
+Prediction and plotting to compare multiple methods
+cross-validation method where one year is dropped and predict for that year
+
+```{r prediction}
+# Trial data
+trial_statsdata <- subset(statsdata, year != 2011, )
+trial_statsdata <- droplevels(trial_statsdata)
+str(trial_statsdata)
+unique(trial_statsdata$year) # 2011 dropped successfully
+# Test data
+test_statsdata <- subset(statsdata, year == 2011, )
+test_statsdata <- droplevels(test_statsdata)
+str(test_statsdata)
+unique(test_statsdata$year) # 2011 dropped successfully
+
+# Fit mlm
+s_mlm1 <- lm(acorn_count ~ site_name + year + mean_max_April_temp + mean_max_March_temp + March_rain + April_rain_lagged1, data = trial_statsdata)
+summary(s_mlm1)
+p.mlm1 <- predict(s_mlm1, newdata = test_statsdata, se.fit=TRUE)
+
+# Fit lmer model 
+s_lmer1 <- lmer(acorn_count ~ April_rain + March_rain_lagged1 + April_rain_lagged1 + (1|site_name) + (1|year), data=trial_statsdata)
+summary(s_lmer1)
+p.lmer1 <- predict(s_lmer1, newdata = test_statsdata, se.fit=TRUE)
+
+# Fit best model by AIC
+s_AIC1 <- lmer(acorn_count ~ April_rain_lagged1 + (1|site_name) + (1|year), data=sub_statsdata)
+summary(s_AIC1)
+p.AIC1 <- predict(s_AIC1, newdata = test_statsdata, se.fit=TRUE)
+
+# New dataframe with predictions from different models
+ptest <- test_statsdata[,1:4]
+colnames(ptest)[4] <- c("resp")
+ptest$se <- 0
+ptest$type <- "true"
+# Add predicted values and standard errors from first model
+ptest <- rbind(ptest ,cbind(ptest[,1:3], type=rep("mlm",20), resp = p.mlm1$fit, se = p.mlm1$se.fit))
+# ...second model
+ptest <- rbind(ptest ,cbind(ptest[,1:3], type=rep("lmer",20), resp = p.lmer1$fit, se = p.lmer1$se.fit))
+#...third model
+ptest <- rbind(ptest ,cbind(ptest[,1:3], type=rep("AIC",20), resp = p.AIC1$fit, se = p.AIC1$se.fit))
+
+# Errorbar plot showing truth and different predictions
+limits <- aes(ymax=ptest$resp + ptest$se, ymin=ptest$resp - ptest$se)
+
+dodge <- position_dodge(width=0.9)
+
+p1 <- ggplot(ptest, aes(colour=type, y=resp, x=site_name)) + geom_point() + geom_errorbar(limits)
+p1 + geom_pointrange(limits)
+
+p2 <- ggplot(ptest, aes(x=factor(site_name), y=resp, fill=factor(type))) + geom_bar(stat="identity") + facet_grid(. ~ type) 
+
++ labs(x="Term", y="% of models including term")
+
+
+  geom_bar(position="dodge", stat="identity") +
+  
+
+# Add errorbars
+
+p1 + geom_bar(limits, position=dodge, width=0.25)
+```
 
 
 

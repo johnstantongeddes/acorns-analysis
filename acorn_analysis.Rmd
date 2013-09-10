@@ -219,7 +219,7 @@ summary(s_lmer1)
 p.lmer1 <- predict(s_lmer1, newdata = test_statsdata, se.fit=TRUE)
 
 # Fit best model by AIC
-s_AIC1 <- lmer(acorn_count ~ April_rain_lagged1 + (1|site_name) + (1|year), data=sub_statsdata)
+s_AIC1 <- lmer(acorn_count ~ April_rain_lagged1 + (1|site_name) + (1|year), data=test_statsdata)
 summary(s_AIC1)
 p.AIC1 <- predict(s_AIC1, newdata = test_statsdata, se.fit=TRUE)
 
@@ -241,19 +241,17 @@ limits <- aes(ymax=ptest$resp + ptest$se, ymin=ptest$resp - ptest$se)
 dodge <- position_dodge(width=0.9)
 
 p1 <- ggplot(ptest, aes(colour=type, y=resp, x=site_name)) + geom_point() + geom_errorbar(limits)
-p1 + geom_pointrange(limits)
+p1 
 
-p2 <- ggplot(ptest, aes(x=factor(site_name), y=resp, fill=factor(type))) + geom_bar(stat="identity") + facet_grid(. ~ type) 
+p2 <- ggplot(ptest, aes(x=factor(type), y=resp, fill=factor(site_name))) + geom_bar(stat="identity") + facet_grid(. ~ site_name) 
+p2
+# not what I want...odd the 'resp' has values up to 20 when it should not...
 
-+ labs(x="Term", y="% of models including term")
+# partial regression plots
+avPlots(s_mlm1)
 
-
-  geom_bar(position="dodge", stat="identity") +
-  
-
-# Add errorbars
-
-p1 + geom_bar(limits, position=dodge, width=0.25)
+s_mlm2 <- lm(acorn_count ~ year + mean_max_April_temp + mean_max_March_temp + March_rain + April_rain_lagged1, data = trial_statsdata)
+avPlots(s_mlm2)
 ```
 
 

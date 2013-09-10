@@ -20,6 +20,7 @@ library(nlme)
 library(lme4)
 library(MuMIn)
 library(ggplot2)
+library(car)
 
 statsdata <- read.csv("stats_data.csv", header=TRUE, sep=",")
 head(statsdata)
@@ -193,65 +194,55 @@ p + scale_fill_grey()
 ```
 
 
-Prediction and plotting to compare multiple methods
-cross-validation method where one year is dropped and predict for that year
+Time series model - average across site and species and predict for each year
 
-```{r prediction}
-# Trial data
-trial_statsdata <- subset(statsdata, year != 2011, )
-trial_statsdata <- droplevels(trial_statsdata)
-str(trial_statsdata)
-unique(trial_statsdata$year) # 2011 dropped successfully
-# Test data
-test_statsdata <- subset(statsdata, year == 2011, )
-test_statsdata <- droplevels(test_statsdata)
-str(test_statsdata)
-unique(test_statsdata$year) # 2011 dropped successfully
+```{r timeseries}
+# Create time series plot of acorn count averaged across site and species
+oak.ts <- with(statsdata, aggregate(acorn_count ~ year, FUN=mean))
+oak.ts <- ts(oak.ts$acorn_count, start=1994, end=2011)
 
-# Fit mlm
-s_mlm1 <- lm(acorn_count ~ site_name + year + mean_max_April_temp + mean_max_March_temp + March_rain + April_rain_lagged1, data = trial_statsdata)
-summary(s_mlm1)
-p.mlm1 <- predict(s_mlm1, newdata = test_statsdata, se.fit=TRUE)
+# Create dataframe with yearly average acorn count 
+dat <- subset(statsdata, select=c(year, acorn_count:mean_max_summer_temp))
+dat <- stats::aggregate(cbind(acorn_count, mean_max_April_temp, mean_max_March_temp, 
+March_rain, April_rain, March_rain_lagged1, April_rain_lagged1, 
+mean_max_summer_temp) ~ year, FUN=mean, data=dat)
+dat <- dat[,-1]
 
-# Fit lmer model 
-s_lmer1 <- lmer(acorn_count ~ April_rain + March_rain_lagged1 + April_rain_lagged1 + (1|site_name) + (1|year), data=trial_statsdata)
-summary(s_lmer1)
-p.lmer1 <- predict(s_lmer1, newdata = test_statsdata, se.fit=TRUE)
+## Fit OLS model
+mod.ols <- lm(formula(dat), data=dat)
+summary(mod.ols)
 
-# Fit best model by AIC
-s_AIC1 <- lmer(acorn_count ~ April_rain_lagged1 + (1|site_name) + (1|year), data=test_statsdata)
-summary(s_AIC1)
-p.AIC1 <- predict(s_AIC1, newdata = test_statsdata, se.fit=TRUE)
+## Model selection by NHST
+mod.ols2 <- update(mod.ols, ~. -April_rain)
+anova(mod.ols2, mod.ols) 
+# Not significant
+summary(mod.ols2)
+mod.ols3 <- update(mod.ols2, ~. -March_rain_lagged1)
+anova(mod.ols3, mod.ols2) 
+# Not significant
+summary(mod.ols3)
+mod.ols4 <- update(mod.ols3, ~. -mean_max_summer_temp)
+anova(mod.ols4, mod.ols3) 
+# Not significant
+summary(mod.ols4)
+mod.ols5 <- update(mod.ols4, ~. -mean_max_March_temp)
+anova(mod.ols5, mod.ols4) 
+# Significant - retain all remaining terms
 
-# New dataframe with predictions from different models
-ptest <- test_statsdata[,1:4]
-colnames(ptest)[4] <- c("resp")
-ptest$se <- 0
-ptest$type <- "true"
-# Add predicted values and standard errors from first model
-ptest <- rbind(ptest ,cbind(ptest[,1:3], type=rep("mlm",20), resp = p.mlm1$fit, se = p.mlm1$se.fit))
-# ...second model
-ptest <- rbind(ptest ,cbind(ptest[,1:3], type=rep("lmer",20), resp = p.lmer1$fit, se = p.lmer1$se.fit))
-#...third model
-ptest <- rbind(ptest ,cbind(ptest[,1:3], type=rep("AIC",20), resp = p.AIC1$fit, se = p.AIC1$se.fit))
+## Model selection by AIC
+mod.ols.AIC <- stepAIC(mod.ols)
+summary(mod.ols.AIC)
 
-# Errorbar plot showing truth and different predictions
-limits <- aes(ymax=ptest$resp + ptest$se, ymin=ptest$resp - ptest$se)
+# Fit minimal model
+mod.ols.min <- update(mod.ols5, ~. - mean_max_April_temp - April_rain_lagged1)
+summary(mod.ols.min)
 
-dodge <- position_dodge(width=0.9)
-
-p1 <- ggplot(ptest, aes(colour=type, y=resp, x=site_name)) + geom_point() + geom_errorbar(limits)
-p1 
-
-p2 <- ggplot(ptest, aes(x=factor(type), y=resp, fill=factor(site_name))) + geom_bar(stat="identity") + facet_grid(. ~ site_name) 
-p2
-# not what I want...odd the 'resp' has values up to 20 when it should not...
-
-# partial regression plots
-avPlots(s_mlm1)
-
-s_mlm2 <- lm(acorn_count ~ year + mean_max_April_temp + mean_max_March_temp + March_rain + April_rain_lagged1, data = trial_statsdata)
-avPlots(s_mlm2)
+## Plot time series and predictions
+plot(oak.ts, lwd=2, ylim=c(0, 3.5))
+lines(x=1994:2011, y=predict(mod.ols), col="purple", lty=1)
+lines(x=1994:2011, y=predict(mod.ols4), col="blue", lty=2)
+lines(x=1994:2011, y=predict(mod.ols.AIC), col="red", lty=2)
+lines(x=1994:2011, y=predict(mod.ols.min), col="green", lty=2)
 ```
 
 

@@ -5,7 +5,7 @@ Example analysis of "stats_data.csv" for survey of statistical methods
 
 **Created:** 2013-05-13
 
-Data is a subset of data file from the paper "Walter D. Koenig and Johannes M. H. Knops. 2013. Large-scale spatial synchrony and cross-synchrony in acorn production by two California oaks. Ecology. 94:83–93. http://dx.doi.org/10.1890/12-0940.1" downloaded from [Ecological Archives](http://esapubs.org/archive/ecol/E094/009/). Seven of the original 13 environmental variables were selected based on an analysis of the full data set (acorn_analysis.Rmd) to reduce complexity of model fitting for participants. Some of the columns were renamed for convenience of analysis in R.
+Data is a subset of data file from the paper "Walter D. Koenig and Johannes M. H. Knops. 2013. Large-scale spatial synchrony and cross-synchrony in statsdata production by two California oaks. Ecology. 94:83–93. http://dx.doi.org/10.1890/12-0940.1" downloaded from [Ecological Archives](http://esapubs.org/archive/ecol/E094/009/). Seven of the original 13 environmental variables were selected based on an analysis of the full data set (statsdata_analysis.Rmd) to reduce complexity of model fitting for participants. Some of the columns were renamed for convenience of analysis in R.
 
 Response is acorn_count (per 30 seconds of counting, log transformed) collected from multiple sites over multiple years with many potential predictors. 
 
@@ -30,9 +30,9 @@ head(statsdata)
 str(statsdata)
 ```
 
-Check distribution of acorn.count
+Check distribution of acorn_count
 
-```{r acorndist}
+```{r statsdatadist}
 hist(statsdata$acorn_count) # Mode at 0 and flat to 3 
 ```
 
@@ -51,11 +51,8 @@ panel.cor <- function(x, y, digits=2, prefix="", cex.cor, ...)
 }
 pairs(statsdata[,4:11], lower.panel=panel.cor, upper.panel=panel.smooth)
 
-# Create pairs with histograms on diagonal and number of 'explanatory' models that included each term on lower panel
-pairs(statsdata[,4:11], lower.panel=panel.cor, upper.panel=panel.smooth, diag.panel=panel.density, cex=.25, cex.cor=3)
-
-# ggplot
-plotmatrix(statsdata[,4:11])
+# Create pairs with histograms on diagonal
+pairs(statsdata[,4:11], lower.panel=panel.cor, upper.panel=panel.smooth, diag.panel=panel.density, cex=.25)
 
 # car package scatterplotMatrix
 scatterplotMatrix(statsdata[,4:11])
@@ -120,6 +117,7 @@ pairs(statsdata[,c(4,8:10)])
 ```
 
 Final model retains April_rain. March_rain_lagged1 and April_rain_lagged1 are marginally significant at alpha=0.05 but would not be retained if correcting for multiple testing.
+
 
 ## Model selection by AIC ##
 
@@ -203,30 +201,18 @@ summary(mlmAIC)
 
 Retains same terms as stepwise model simplification!
 
-### Summary of survery responses ###
-
-Load file that summarizes survery responses. For each of the seven environmental predictors, gives the percent of final models that included that predictor. Plot.
-
-```{r summary}
-rs <- read.table("response_summary.tsv", header=T, sep="\t")
-colnames(rs)[2] <- "Model_type"
-ggplot(rs, aes(x=factor(Model_type), y=percent_included, fill=Model_type)) + geom_bar(stat="identity") + facet_grid(. ~ term) + labs(x="Term", y="% of models including term")
-
-# Repeat after dropping 'other'
-rs1 <- rs[rs$"Model_type"!="other",]
-p <- ggplot(rs1, aes(x=factor(Model_type), y=percent_included, fill=factor(Model_type))) + geom_bar(stat="identity") + facet_grid(. ~ term) + labs(x="Term", y="% of models including term")
-p + scale_fill_grey()
-```
 
 
-Time series model - average across site and species and predict for each year
+## Time series model ##
+
+Average across site and species and predict for each year
 
 ```{r timeseries}
-# Create time series plot of acorn count averaged across site and species
-acorn.ts <- with(statsdata, aggregate(acorn_count ~ year, FUN=mean))
-acorn.ts <- ts(acorn.ts$acorn_count, start=1994, end=2011)
+# Create time series plot of statsdata count averaged across site and species
+statsdata.ts <- with(statsdata, aggregate(acorn_count ~ year, FUN=mean))
+statsdata.ts <- ts(statsdata.ts$acorn_count, start=1994, end=2011)
 
-# Create dataframe with yearly average acorn count 
+# Create dataframe with yearly average statsdata count 
 dat <- subset(statsdata, select=c(year, acorn_count:mean_max_summer_temp))
 dat <- stats::aggregate(cbind(acorn_count, mean_max_April_temp, mean_max_March_temp, 
 March_rain, April_rain, March_rain_lagged1, April_rain_lagged1, 
@@ -263,8 +249,8 @@ mod.ols.min <- update(mod.ols5, ~. - mean_max_April_temp - April_rain_lagged1)
 summary(mod.ols.min)
 
 ## Plot time series and predictions
-jpeg("Fig2-time-series.jpeg")
-plot(acorn.ts, lwd=2, ylim=c(0, 3.5), xlab="Year", ylab="Acorn count", lty=1)
+postscript("Fig2-time-series")
+plot(statsdata.ts, lwd=2, ylim=c(0, 3.5), xlab="Year", ylab="Acorn count", lty=1, las=1)
 lines(x=1994:2011, y=predict(mod.ols), col="orange", lty=2, lwd=2)
 lines(x=1994:2011, y=predict(mod.ols4), col="blue", lty=3)
 lines(x=1994:2011, y=predict(mod.ols.AIC), col="red", lty=4, lwd=2)
@@ -272,8 +258,103 @@ lines(x=1994:2011, y=predict(mod.ols.min), col="green", lty=5, lwd=2)
 dev.off()
 ```
 
+Check if linear model (not time series) as above has similar results to time series
+
+```{r lmer again}
+lmer9 <- lmer(acorn_count ~ April_rain + March_rain_lagged1 + April_rain_lagged1 + (1|year), data=statsdata)
+summary(lmer9)
+
+lmer10 <- lmer(acorn_count ~ April_rain + April_rain_lagged1 + (1|year), data=statsdata)
+anova(lmer10, lmer9)
+
+lmer11 <- lmer(acorn_count ~ April_rain + March_rain_lagged1 + (1|year), data=statsdata)
+anova(lmer11, lmer9)
+
+lmer12 <- lmer(acorn_count ~ April_rain + (1|year), data=statsdata)
+anova(lmer12, lmer11)
+
+lmer13 <- lmer(acorn_count ~ March_rain_lagged1 + (1|year), data=statsdata)
+anova(lmer13, lmer11)
+```
+
+Interesting -- results are not the same as time series analysis. April rain is significant, consistent with LMER including site and secies and TS models, but April_rain_lagged1 is also signifcant, though only marginally so in LMER+site+species. March_rain_lagged1 is marginally significant which is consistent with previous lmer. 
+
+To examine differences in predictive ability among the final models from survey participants, perform a simulation. Load table with the method and terms included in each of the final models. Divide data into trial (70% of observations) and test (30% of observations) data. Fit linear models (not exactly what each participant did, but a first approximation) on trial data, and predict on test data. Calculate squared error for each model as the deviation of the predicted alues from the observed values in the test dataset.
+
+```{r final models}
+# Load terms included in each final model
+selections.raw<-read.csv("selected_variables.csv", na.strings="NA")
+head(selections.raw)
+
+selections<-selections.raw[!(is.na(selections.raw$Method)|(rowSums(selections.raw[,-c(1:4)],na.rm=T)==0)),-c(1:4)]
+head(selections)
+
+# Number of parameters included in each final model
+rowSums(selections,na.rm = T)
+```
+
+```{r bootstrap models}
+Nruns=400
+validationS <- 30 # percentage of data to validation
+
+# Fit Nruns models for each final model and calculate error
+SSsd <- SSmean <- {}
+for (i in 1:nrow(selections)){
+    SS <- {}
+    for (j in 1:Nruns){ 
+        remove30 <- sample(nrow(statsdata),floor(validationS*nrow(statsdata)/100))
+        data2model <- statsdata[-remove30,c(colnames(selections)[!is.na(selections[i,])],"acorn_count")]
+        data2predict <- statsdata[remove30,c(colnames(selections)[!is.na(selections[i,])],"acorn_count")]
+        lm1 <- lm(acorn_count~.,data=data2model)
+        predicted <- predict(lm1,newdata = data2predict,type="response")
+        error <- data.frame(data2predict,predicted,diff=predicted-data2predict$acorn_count,Squares=(predicted-data2predict$acorn_count)^2)
+        SS[j] <- sum(error$Squares)
+    }
+    SSmean [i] <- mean(SS)
+    SSsd [i] <- sd(SS)
+}
+
+
+# Randomly select parameters, from 1 to 10, for predictive ability without model selectin
+SSsdT <- SSmeanT <- {}
+
+for (i in 1:10){
+    SST <- {}
+    for (j in 1:Nruns){
+     
+       
+        remove30 <- sample(nrow(statsdata),floor(validationS*nrow(statsdata)/100))
+        form<-as.formula(paste("acorn_count","~",paste(sample(colnames(statsdata)[colnames(statsdata)!="acorn_count"],i),collapse = "+")))
+        data2model <- statsdata[-remove30,]
+        data2predict <- statsdata[remove30,]
+        lm1 <- lm(form,data=data2model)
+        predicted <- predict(lm1,newdata = data2predict,type="response")
+        error <- data.frame(data2predict,predicted,diff=predicted-data2predict$acorn_count,Squares=(predicted-data2predict$acorn_count)^2)
+        SST[j] <- sum(error$Squares)
+    }
+    SSmeanT [i] <- mean(SST)
+    SSsdT [i] <- sd(SST)
+}
+
+## Plot!
+postscript("Squared_Error_vs_Parameters.eps")
+
+plot(SSmean~rowSums(selections,na.rm = T),pch=21,bg=selections.raw[rownames(selections),]$Method,xlab = "Number of parameters", ylab = "Squared deviation from expected",cex=1.5,cex.lab=1,xlim=c(1,10),ylim = c(60,170),type="n", las=1)
+
+polygon(data.frame(x=c(1:10,10:1),y=c(SSmeanT-1.96*SSsdT,rev(SSmeanT+1.96*SSsdT))),col="gray",border=NA)
+points(spline(1:10,SSmeanT),pch=21,bg=3,cex=1.5,cex.lab=2,type="l")
+
+arrows(rowSums(selections,na.rm = T),SSmean-1.96*SSsd,rowSums(selections,na.rm = T),SSmean+1.96*SSsd,angle = 90,length=0.05,code = 3)
+points(SSmean~rowSums(selections,na.rm = T),pch=as.integer(selections.raw[rownames(selections),]$Method)*2+18,xlab = "Number of parameters", ylab = "Squared deviation from expected",cex=1.5,cex.lab=1,xlim=c(1,10),ylim = c(20,150))
+
+dev.off()
+```
+
 
 
 ```{r session}
 sessionInfo()
+
+# save as R script without markdown
+purl("acorn_analysis.Rmd")
 ```

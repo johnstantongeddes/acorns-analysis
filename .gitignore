@@ -4,5 +4,9 @@
 *.html
 *.tex
 *.pdf
+.RData
 cache/
 
+.Rproj.user
+
+figure/*

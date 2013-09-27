@@ -249,12 +249,15 @@ mod.ols.min <- update(mod.ols5, ~. - mean_max_April_temp - April_rain_lagged1)
 summary(mod.ols.min)
 
 ## Plot time series and predictions
+# grey color palette
+gc <- grey.colors(4)
+
 postscript("Fig2-time-series")
 plot(statsdata.ts, lwd=2, ylim=c(0, 3.5), xlab="Year", ylab="Acorn count", lty=1, las=1)
-lines(x=1994:2011, y=predict(mod.ols), col="orange", lty=2, lwd=2)
-lines(x=1994:2011, y=predict(mod.ols4), col="blue", lty=3)
-lines(x=1994:2011, y=predict(mod.ols.AIC), col="red", lty=4, lwd=2)
-lines(x=1994:2011, y=predict(mod.ols.min), col="green", lty=5, lwd=2)
+lines(x=1994:2011, y=predict(mod.ols), col=gc[1], lty=2, lwd=2)
+lines(x=1994:2011, y=predict(mod.ols4), col=gc[2], lty=3)
+lines(x=1994:2011, y=predict(mod.ols.AIC), col=gc[3], lty=4, lwd=2)
+lines(x=1994:2011, y=predict(mod.ols.min), col=gc[4], lty=5, lwd=2)
 dev.off()
 ```
 

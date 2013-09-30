@@ -24,6 +24,7 @@ library(ggplot2)
 library(car)
 library(psych)
 library(SciViews)
+library(knitr)
 
 statsdata <- read.csv("stats_data.csv", header=TRUE, sep=",")
 head(statsdata)
@@ -38,21 +39,27 @@ hist(statsdata$acorn_count) # Mode at 0 and flat to 3
 
 ## Graphical exploration ##
 ```{r explore}
-# panel.cor function from the help of pairs function
-panel.cor <- function(x, y, digits=2, prefix="", cex.cor, ...)
-{
-    usr <- par("usr"); on.exit(par(usr))
-    par(usr = c(0, 1, 0, 1))
-    r <- abs(cor(x, y))
-    txt <- format(c(r, 0.123456789), digits=digits)[1]
-    txt <- paste(prefix, txt, sep="")
-    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
-    text(0.5, 0.5, txt, cex = cex.cor * r)
-}
-pairs(statsdata[,4:11], lower.panel=panel.cor, upper.panel=panel.smooth)
+source("pairs-JSG.R")
+
+# Final models from survey participants
+# Load terms included in each final model
+selections.raw<-read.csv("selected_variables.csv", na.strings="NA")
+head(selections.raw)
+
+# Remove models not selectd by AIC or P-value and those that did not retain any terms
+selections<-selections.raw[!(is.na(selections.raw$Method)), -c(1:4)]
+dim(selections)
+head(selections)
+colSums(selections, na.rm=T)
+rowSums(selections, na.rm=T)
+
+# Vector of values to print:
+model.vec <- c("")
 
 # Create pairs with histograms on diagonal
-pairs(statsdata[,4:11], lower.panel=panel.cor, upper.panel=panel.smooth, diag.panel=panel.density, cex=.25)
+# make empty vector "labels" to prevent labels from being printed
+labels = c("Acorn \n count", "Max April \n Temp", "Max March \n Temp", "March rain", "April rain", "Lagged \n March rain", "Lagged \n April rain", "Max summer \n Temp")
+pairsJSG(statsdata[,4:11], lower.panel=panel.sp, upper.panel=panel.smooth, diag.panel=panel.density, labels=labels, col.smooth = "black")
 
 # car package scatterplotMatrix
 scatterplotMatrix(statsdata[,4:11])
@@ -289,6 +296,7 @@ To examine differences in predictive ability among the final models from survey 
 selections.raw<-read.csv("selected_variables.csv", na.strings="NA")
 head(selections.raw)
 
+# Remove models not selectd by AIC or P-value and those that did not retain any terms
 selections<-selections.raw[!(is.na(selections.raw$Method)|(rowSums(selections.raw[,-c(1:4)],na.rm=T)==0)),-c(1:4)]
 head(selections)
 

@@ -21,11 +21,13 @@ library(nlme)
 library(lme4)
 library(MuMIn)
 library(ggplot2)
-library(car)
-library(psych)
 library(SciViews)
 library(knitr)
+```
 
+Load data
+
+```{r data}
 statsdata <- read.csv("stats_data.csv", header=TRUE, sep=",")
 head(statsdata)
 str(statsdata)
@@ -39,36 +41,36 @@ hist(statsdata$acorn_count) # Mode at 0 and flat to 3
 
 
 Load data file with terms included in final models provided by survey participants
+
 ```{r variables data}
 selections.raw<-read.csv("selected_variables.csv", na.strings="NA")
 head(selections.raw)
 
 # Remove models not selectd by AIC or P-value
-selections<-selections.raw[!(is.na(selections.raw$Method)), -c(1:4)]
-dim(selections)
-head(selections)
-colSums(selections, na.rm=T)
-rowSums(selections, na.rm=T)
+variables<-selections.raw[!(is.na(selections.raw$Method)), -c(1:4)]
+dim(variables)
+head(variables)
+colSums(variables, na.rm=T)
+rowSums(variables, na.rm=T)
 
 # Create matrix 8x8 matrix and fill lower triangle. First column is the number of times each variable is included in a final model. Off-diagonals are the number of times each pair-wise combination of variables are included in final model.
-
 var.mat <- matrix(NA, nrow=8, ncol=8)
 
 # First column
-var.mat[2:8,1] <- colSums(selections, na.rm=T)[2:8]
+var.mat[2:8,1] <- colSums(variables, na.rm=T)[2:8]
 
 # For each pair of environmental predictors, report number of times combination is used in a final model
 jstart <- 4
 
 for(j in jstart:9) {
   cat(jstart, '\n')
-  varj <- colnames(selections)[j]
+  varj <- colnames(variables)[j]
   cat(varj, '\n')
   for (i in (jstart+1):10) {
-    vari <- colnames(selections)[i]
+    vari <- colnames(variables)[i]
     cat(vari, '\n')
-    #print(length(which(selections[,vari]==1 & selections[,varj]==1)))
-    var.mat[i-2,j-2] <- length(which(selections[,vari]==1 & selections[,varj]==1))
+    #print(length(which(variables[,vari]==1 & variables[,varj]==1)))
+    var.mat[i-2,j-2] <- length(which(variables[,vari]==1 & variables[,varj]==1))
   }
   jstart <- jstart+1
 }
@@ -86,18 +88,14 @@ source("pairs-JSG.R")
 # Create pairs with histograms on diagonal
 # make empty vector "labels" to prevent labels from being printed
 labels = c("Acorn \n count", "Max April \n Temp", "Max March \n Temp", "March rain", "April rain", "Lagged \n March rain", "Lagged \n April rain", "Max summer \n Temp")
-pairsJSG(statsdata[,4:11], lower.panel=panel.sp, upper.panel=panel.smooth, diag.panel=panel.density, labels=labels, col.smooth = "black")
 
-# car package scatterplotMatrix
-scatterplotMatrix(statsdata[,4:11])
-
-# psych package pairs
-pairs.panels(statsdata[,4:11], smooth = TRUE)
+# custom pairs plot
+postscript("Fig1-pairs.eps")
+suppressWarnings(pairsJSG(statsdata[,4:11], lower.panel=panel.sp, upper.panel=panel.smooth, diag.panel=panel.density, labels=labels, m=var.mat, col.smooth="black"))
+dev.off()
 ```
 
-## 
-
-
+    
 ## Model selection by step-wise deletion ##
 
 Fit mixed-effects model with site and year as random effects and all environmental predictors as fixed. 
@@ -173,7 +171,7 @@ summary(model.avg(fmList))
 
 
 
-----------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 
 What happens if we don't use random effects, but specify all terms as fixed?
 
@@ -283,15 +281,12 @@ mod.ols.min <- update(mod.ols5, ~. - mean_max_April_temp - April_rain_lagged1)
 summary(mod.ols.min)
 
 ## Plot time series and predictions
-# grey color palette
-gc <- grey.colors(4)
-
-postscript("Fig2-time-series")
+postscript("Fig2-time-series.eps")
 plot(statsdata.ts, lwd=2, ylim=c(0, 3.5), xlab="Year", ylab="Acorn count", lty=1, las=1)
-lines(x=1994:2011, y=predict(mod.ols), col=gc[1], lty=2, lwd=2)
-lines(x=1994:2011, y=predict(mod.ols4), col=gc[2], lty=3)
-lines(x=1994:2011, y=predict(mod.ols.AIC), col=gc[3], lty=4, lwd=2)
-lines(x=1994:2011, y=predict(mod.ols.min), col=gc[4], lty=5, lwd=2)
+lines(x=1994:2011, y=predict(mod.ols), col="black", lty=2, lwd=2)
+lines(x=1994:2011, y=predict(mod.ols4), col="black", lty=3)
+lines(x=1994:2011, y=predict(mod.ols.AIC), col="black", lty=4, lwd=2)
+lines(x=1994:2011, y=predict(mod.ols.min), col="black", lty=5, lwd=2)
 dev.off()
 ```
 
@@ -319,11 +314,7 @@ Interesting -- results are not the same as time series analysis. April rain is s
 To examine differences in predictive ability among the final models from survey participants, perform a simulation. Load table with the method and terms included in each of the final models. Divide data into trial (70% of observations) and test (30% of observations) data. Fit linear models (not exactly what each participant did, but a first approximation) on trial data, and predict on test data. Calculate squared error for each model as the deviation of the predicted alues from the observed values in the test dataset.
 
 ```{r final models}
-# Load terms included in each final model
-selections.raw<-read.csv("selected_variables.csv", na.strings="NA")
-head(selections.raw)
-
-# Remove models not selectd by AIC or P-value and those that did not retain any terms
+# From final models by participants (selected_variables.csv), remove models not selectd by AIC or P-value and those that did not retain any terms
 selections<-selections.raw[!(is.na(selections.raw$Method)|(rowSums(selections.raw[,-c(1:4)],na.rm=T)==0)),-c(1:4)]
 head(selections)
 
@@ -375,7 +366,7 @@ for (i in 1:10){
 }
 
 ## Plot!
-postscript("Squared_Error_vs_Parameters.eps")
+postscript("Fig3-squared-error-vs-parameters.eps")
 
 plot(SSmean~rowSums(selections,na.rm = T),pch=21,bg=selections.raw[rownames(selections),]$Method,xlab = "Number of parameters", ylab = "Squared deviation from expected",cex=1.5,cex.lab=1,xlim=c(1,10),ylim = c(60,170),type="n", las=1)
 

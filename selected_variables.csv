@@ -1,0 +1,25 @@
+Method,Model type,Exploratory analysis,responded,site_name,year,species,mean_max_April_temp,mean_max_March_temp,March_rain,April_rain,March_rain_lagged1,April_rain_lagged1,mean_max_summer_temp
+NA,Bayesian,PCA,1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+NA,gam,graphical,1,NA,NA,NA,NA,NA,1,NA,1,NA,NA
+NA,cor,NA,1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+NA,Bayesian,NA,1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+AIC,glm,graphical,1,NA,1,1,1,NA,1,1,1,1,1
+AIC,gls, ARIMA modeling,graphical,1,1,1,1,1,NA,NA,1,1,1
+AIC,lmer,graphical,1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+AIC,lme,graphical,1,NA,NA,NA,1,NA,NA,NA,NA,1,NA
+AIC,lmer,correlation,1,1,1,NA,NA,NA,NA,1,NA,1,NA
+AIC,lme,graphical,1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+AIC,glmer,graphical,1,1,1,NA,NA,NA,NA,NA,1,1,NA
+AIC,lme,graphical,1,1,NA,NA,1,NA,NA,NA,NA,1,NA
+P-value,lm,graphical,1,NA,NA,NA,1,1,NA,1,NA,NA,NA
+P-value,nlme,NA,1,NA,NA,NA,1,1,NA,NA,1,1,NA
+P-value,lm,graphical,1,NA,1,NA,1,NA,NA,1,NA,NA,NA
+P-value,lmer,graphical,1,NA,1,1,1,1,1,1,1,1,1
+P-value,lme,graphical,1,1,1,1,NA,NA,NA,1,1,1,NA
+P-value,lm,graphical, correlation,1,1,NA,1,1,NA,NA,1,NA,NA
+P-value,lm,graphical,1,1,1,1,1,1,1,1,1,1,1
+P-value,lm,graphical, PCA,1,1,1,NA,NA,NA,1,1,1,1
+P-value,SAS, lme,NA,1,1,1,1,NA,NA,NA,NA,1,1
+P-value,lme,correlation,1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+AIC,lmer,graphical,1,NA,NA,1,1,NA,NA,NA,NA,1,NA
+P-value,lm,graphical,1,NA,NA,NA,1,1,NA,NA,1,1,NA
